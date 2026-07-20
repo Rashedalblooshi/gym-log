@@ -404,32 +404,6 @@
     margin: 0 0 10px;
   }
 
-  .muscle-diagram {
-    display: flex;
-    justify-content: center;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px 0 12px;
-  }
-  .body-svg { width: 140px; height: auto; display: block; }
-  .muscle-region {
-    fill: var(--bg-elevated-2);
-    stroke: var(--text-faint);
-    stroke-width: 1.5;
-  }
-  .muscle-region.base { fill: var(--border); }
-  .muscle-region.hl {
-    fill: #e5484d;
-    stroke: #b0342f;
-  }
-  .muscle-caption {
-    text-align: center;
-    font-size: 0.8125rem;
-    color: var(--text-dim);
-    margin: 8px 0 0;
-  }
-
   .set-table { display: flex; flex-direction: column; gap: 8px; }
   .set-head, .set-row {
     display: grid;
@@ -590,11 +564,6 @@
       </div>
       <div class="sheet-body">
         <div>
-          <p class="section-label">Target Muscle</p>
-          <div class="muscle-diagram" id="muscleDiagram"></div>
-          <p class="muscle-caption" id="muscleCaption"></p>
-        </div>
-        <div>
           <p class="section-label">Log today</p>
           <div class="set-table" id="setTable"></div>
           <div class="entry-actions">
@@ -624,43 +593,43 @@
     Monday: {
       subtitle: "Upper Body — Push",
       exercises: [
-        { id: "mon-chest-press", name: "Chest Press Machine", sets: 4, reps: 8, type: "weight", view: "front", muscles: ["chest-l", "chest-r"], muscleLabel: "Chest" },
-        { id: "mon-incline-chest-press", name: "Incline Chest Press Machine", sets: 3, reps: 10, type: "weight", view: "front", muscles: ["chest-l", "chest-r"], muscleLabel: "Upper Chest" },
-        { id: "mon-overhead-press", name: "Overhead Press", sets: 3, reps: 10, type: "weight", view: "front", muscles: ["shoulder-l", "shoulder-r"], muscleLabel: "Shoulders" },
-        { id: "mon-lateral-raise", name: "Lateral Raise", sets: 3, reps: 15, type: "weight", view: "front", muscles: ["shoulder-l", "shoulder-r"], muscleLabel: "Shoulders (Side Delts)" },
-        { id: "mon-triceps-pushdown", name: "Triceps Pushdown", sets: 3, reps: 12, type: "weight", view: "back", muscles: ["triceps-l", "triceps-r"], muscleLabel: "Triceps" },
-        { id: "mon-hanging-leg-raise", name: "Hanging Leg Raise", sets: 3, reps: 12, type: "weight", view: "front", muscles: ["abs"], muscleLabel: "Abs" }
+        { id: "mon-chest-press", name: "Chest Press Machine", sets: 4, reps: 8, type: "weight" },
+        { id: "mon-incline-chest-press", name: "Incline Chest Press Machine", sets: 3, reps: 10, type: "weight" },
+        { id: "mon-overhead-press", name: "Overhead Press", sets: 3, reps: 10, type: "weight" },
+        { id: "mon-lateral-raise", name: "Lateral Raise", sets: 3, reps: 15, type: "weight" },
+        { id: "mon-triceps-pushdown", name: "Triceps Pushdown", sets: 3, reps: 12, type: "weight" },
+        { id: "mon-hanging-leg-raise", name: "Hanging Leg Raise", sets: 3, reps: 12, type: "weight" }
       ]
     },
     Tuesday: {
       subtitle: "Lower Body — Quads",
       exercises: [
-        { id: "tue-hack-squat", name: "Hack Squat Machine", sets: 4, reps: 8, type: "weight", view: "front", muscles: ["quad-l", "quad-r"], muscleLabel: "Quads" },
-        { id: "tue-leg-press", name: "Leg Press", sets: 3, reps: 12, type: "weight", view: "front", muscles: ["quad-l", "quad-r"], muscleLabel: "Quads" },
-        { id: "tue-leg-extension", name: "Leg Extension", sets: 3, reps: 12, type: "weight", view: "front", muscles: ["quad-l", "quad-r"], muscleLabel: "Quads" },
-        { id: "tue-standing-calf-raise", name: "Standing Calf Raise", sets: 3, reps: 15, type: "weight", view: "back", muscles: ["calf-l", "calf-r"], muscleLabel: "Calves" },
-        { id: "tue-plank", name: "Plank", sets: 3, reps: 45, type: "time", view: "front", muscles: ["abs"], muscleLabel: "Core" }
+        { id: "tue-hack-squat", name: "Hack Squat Machine", sets: 4, reps: 8, type: "weight" },
+        { id: "tue-leg-press", name: "Leg Press", sets: 3, reps: 12, type: "weight" },
+        { id: "tue-leg-extension", name: "Leg Extension", sets: 3, reps: 12, type: "weight" },
+        { id: "tue-standing-calf-raise", name: "Standing Calf Raise", sets: 3, reps: 15, type: "weight" },
+        { id: "tue-plank", name: "Plank", sets: 3, reps: 45, type: "time" }
       ]
     },
     Wednesday: {
       subtitle: "Upper Body — Pull",
       exercises: [
-        { id: "wed-chest-supported-row", name: "Chest Supported Row Machine", sets: 4, reps: 8, type: "weight", view: "back", muscles: ["lat-l", "lat-r"], muscleLabel: "Back (Lats)" },
-        { id: "wed-lat-pulldown", name: "Lat Pulldown", sets: 3, reps: 10, type: "weight", view: "back", muscles: ["lat-l", "lat-r"], muscleLabel: "Lats" },
-        { id: "wed-cable-row", name: "Cable Row", sets: 3, reps: 12, type: "weight", view: "back", muscles: ["lat-l", "lat-r"], muscleLabel: "Mid Back" },
-        { id: "wed-barbell-curl", name: "Barbell Curl", sets: 3, reps: 10, type: "weight", view: "front", muscles: ["bicep-l", "bicep-r"], muscleLabel: "Biceps" },
-        { id: "wed-overhead-triceps-ext", name: "Overhead Triceps Extension", sets: 3, reps: 12, type: "weight", view: "back", muscles: ["triceps-l", "triceps-r"], muscleLabel: "Triceps" },
-        { id: "wed-cable-crunch", name: "Cable Crunch", sets: 3, reps: 15, type: "weight", view: "front", muscles: ["abs"], muscleLabel: "Abs" }
+        { id: "wed-chest-supported-row", name: "Chest Supported Row Machine", sets: 4, reps: 8, type: "weight" },
+        { id: "wed-lat-pulldown", name: "Lat Pulldown", sets: 3, reps: 10, type: "weight" },
+        { id: "wed-cable-row", name: "Cable Row", sets: 3, reps: 12, type: "weight" },
+        { id: "wed-barbell-curl", name: "Barbell Curl", sets: 3, reps: 10, type: "weight" },
+        { id: "wed-overhead-triceps-ext", name: "Overhead Triceps Extension", sets: 3, reps: 12, type: "weight" },
+        { id: "wed-cable-crunch", name: "Cable Crunch", sets: 3, reps: 15, type: "weight" }
       ]
     },
     Thursday: {
       subtitle: "Lower Body — Posterior",
       exercises: [
-        { id: "thu-lying-leg-curl", name: "Lying Leg Curl Machine", sets: 4, reps: 10, type: "weight", view: "back", muscles: ["hamstring-l", "hamstring-r"], muscleLabel: "Hamstrings" },
-        { id: "thu-hip-abduction", name: "Hip Abduction Machine", sets: 3, reps: 12, type: "weight", view: "back", muscles: ["glute-l", "glute-r"], muscleLabel: "Glutes" },
-        { id: "thu-seated-calf-raise", name: "Seated Calf Raise", sets: 3, reps: 15, type: "weight", view: "back", muscles: ["calf-l", "calf-r"], muscleLabel: "Calves" },
-        { id: "thu-dead-bug", name: "Dead Bug", sets: 3, reps: 12, type: "weight", view: "front", muscles: ["abs"], muscleLabel: "Core" },
-        { id: "thu-negative-pull-ups", name: "Negative Pull Ups", sets: 4, reps: 10, type: "weight", view: "back", muscles: ["lat-l", "lat-r"], muscleLabel: "Lats" }
+        { id: "thu-lying-leg-curl", name: "Lying Leg Curl Machine", sets: 4, reps: 10, type: "weight" },
+        { id: "thu-hip-abduction", name: "Hip Abduction Machine", sets: 3, reps: 12, type: "weight" },
+        { id: "thu-seated-calf-raise", name: "Seated Calf Raise", sets: 3, reps: 15, type: "weight" },
+        { id: "thu-dead-bug", name: "Dead Bug", sets: 3, reps: 12, type: "weight" },
+        { id: "thu-negative-pull-ups", name: "Negative Pull Ups", sets: 4, reps: 10, type: "weight" }
       ]
     }
   };
@@ -894,79 +863,11 @@
     });
   }
 
-  // ---------- muscle diagram ----------
-  var BODY_REGIONS = {
-    front: [
-      { id: "shoulder-l", shape: "ellipse", cx: 55, cy: 70, rx: 18, ry: 14 },
-      { id: "shoulder-r", shape: "ellipse", cx: 145, cy: 70, rx: 18, ry: 14 },
-      { id: "chest-l", shape: "ellipse", cx: 80, cy: 87, rx: 23, ry: 19 },
-      { id: "chest-r", shape: "ellipse", cx: 120, cy: 87, rx: 23, ry: 19 },
-      { id: "bicep-l", shape: "ellipse", cx: 44, cy: 107, rx: 12, ry: 22 },
-      { id: "bicep-r", shape: "ellipse", cx: 156, cy: 107, rx: 12, ry: 22 },
-      { id: "forearm-l", shape: "rect", x: 34, y: 128, w: 18, h: 46, rx: 9 },
-      { id: "forearm-r", shape: "rect", x: 148, y: 128, w: 18, h: 46, rx: 9 },
-      { id: "abs", shape: "rect", x: 76, y: 112, w: 48, h: 58, rx: 12 },
-      { id: "quad-l", shape: "rect", x: 66, y: 178, w: 30, h: 72, rx: 14 },
-      { id: "quad-r", shape: "rect", x: 104, y: 178, w: 30, h: 72, rx: 14 },
-      { id: "shin-l", shape: "rect", x: 71, y: 255, w: 20, h: 52, rx: 8 },
-      { id: "shin-r", shape: "rect", x: 109, y: 255, w: 20, h: 52, rx: 8 }
-    ],
-    back: [
-      { id: "traps", shape: "rect", x: 78, y: 50, w: 44, h: 22, rx: 10 },
-      { id: "shoulder-back-l", shape: "ellipse", cx: 55, cy: 70, rx: 18, ry: 14 },
-      { id: "shoulder-back-r", shape: "ellipse", cx: 145, cy: 70, rx: 18, ry: 14 },
-      { id: "lat-l", shape: "ellipse", cx: 68, cy: 105, rx: 26, ry: 34 },
-      { id: "lat-r", shape: "ellipse", cx: 132, cy: 105, rx: 26, ry: 34 },
-      { id: "triceps-l", shape: "ellipse", cx: 44, cy: 107, rx: 12, ry: 22 },
-      { id: "triceps-r", shape: "ellipse", cx: 156, cy: 107, rx: 12, ry: 22 },
-      { id: "forearm-back-l", shape: "rect", x: 34, y: 128, w: 18, h: 46, rx: 9 },
-      { id: "forearm-back-r", shape: "rect", x: 148, y: 128, w: 18, h: 46, rx: 9 },
-      { id: "lowerback", shape: "rect", x: 84, y: 142, w: 32, h: 26, rx: 10 },
-      { id: "glute-l", shape: "ellipse", cx: 82, cy: 182, rx: 21, ry: 19 },
-      { id: "glute-r", shape: "ellipse", cx: 118, cy: 182, rx: 21, ry: 19 },
-      { id: "hamstring-l", shape: "rect", x: 66, y: 202, w: 30, h: 56, rx: 14 },
-      { id: "hamstring-r", shape: "rect", x: 104, y: 202, w: 30, h: 56, rx: 14 },
-      { id: "calf-l", shape: "ellipse", cx: 82, cy: 278, rx: 15, ry: 29 },
-      { id: "calf-r", shape: "ellipse", cx: 118, cy: 278, rx: 15, ry: 29 }
-    ]
-  };
-
-  function buildBodyDiagram(view, highlightIds) {
-    var svgNS = "http://www.w3.org/2000/svg";
-    var svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("viewBox", "0 0 200 320");
-    svg.setAttribute("class", "body-svg");
-    svg.setAttribute("aria-hidden", "true");
-
-    function addEl(tag, attrs, cls) {
-      var el = document.createElementNS(svgNS, tag);
-      Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
-      el.setAttribute("class", cls);
-      svg.appendChild(el);
-    }
-
-    addEl("circle", { cx: 100, cy: 28, r: 18 }, "muscle-region base");
-    addEl("rect", { x: 92, y: 44, width: 16, height: 12, rx: 4 }, "muscle-region base");
-
-    BODY_REGIONS[view].forEach(function (region) {
-      var isHl = highlightIds.indexOf(region.id) !== -1;
-      var cls = "muscle-region" + (isHl ? " hl" : "");
-      if (region.shape === "ellipse") {
-        addEl("ellipse", { cx: region.cx, cy: region.cy, rx: region.rx, ry: region.ry }, cls);
-      } else {
-        addEl("rect", { x: region.x, y: region.y, width: region.w, height: region.h, rx: region.rx }, cls);
-      }
-    });
-
-    return svg;
-  }
 
   // ---------- detail sheet ----------
   var sheetEl = document.getElementById("sheet");
   var sheetName = document.getElementById("sheetName");
   var sheetTarget = document.getElementById("sheetTarget");
-  var muscleDiagramEl = document.getElementById("muscleDiagram");
-  var muscleCaptionEl = document.getElementById("muscleCaption");
   var setTable = document.getElementById("setTable");
   var saveBtn = document.getElementById("saveBtn");
   var resetBtn = document.getElementById("resetBtn");
@@ -980,9 +881,6 @@
     var ex = EXERCISE_INDEX[exId];
     sheetName.textContent = ex.name;
     sheetTarget.textContent = targetLabel(ex);
-    muscleDiagramEl.innerHTML = "";
-    muscleDiagramEl.appendChild(buildBodyDiagram(ex.view, ex.muscles));
-    muscleCaptionEl.textContent = "Target: " + ex.muscleLabel;
     buildSetTable(ex);
     renderChart(ex);
     renderHistory(ex);
@@ -1536,7 +1434,7 @@
   // Auto-update: always check the real deployed version (bypassing HTTP cache)
   // and force a fresh reload if this page is stale, so future fixes arrive
   // without needing to manually clear site data every time.
-  var APP_VERSION = "2026-07-20-6";
+  var APP_VERSION = "2026-07-20-7";
   fetch("version.json?t=" + Date.now(), { cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (data) {
