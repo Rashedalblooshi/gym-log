@@ -1371,6 +1371,21 @@
       keys.forEach(function (k) { caches.delete(k); });
     });
   }
+
+  // Auto-update: always check the real deployed version (bypassing HTTP cache)
+  // and force a fresh reload if this page is stale, so future fixes arrive
+  // without needing to manually clear site data every time.
+  var APP_VERSION = "2026-07-20-3";
+  fetch("version.json?t=" + Date.now(), { cache: "no-store" })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.v && data.v !== APP_VERSION) {
+        var url = new URL(location.href);
+        url.searchParams.set("_r", Date.now());
+        location.replace(url.toString());
+      }
+    })
+    .catch(function () {});
 </script>
 </body>
 </html>
