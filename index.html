@@ -334,20 +334,25 @@
   .sheet {
     position: fixed;
     inset: 0;
+    height: 100vh;
+    height: 100dvh;
     z-index: 20;
     display: flex;
     justify-content: center;
+    align-items: stretch;
     pointer-events: none;
   }
   .sheet-inner {
     width: 100%;
     max-width: 480px;
+    height: 100%;
     background: var(--bg);
     transform: translateY(100%);
     transition: transform 0.28s cubic-bezier(.32,.72,0,1);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .sheet.open { pointer-events: auto; }
   .sheet.open .sheet-inner { transform: translateY(0); }
