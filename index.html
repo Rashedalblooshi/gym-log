@@ -439,8 +439,13 @@
     outline-offset: 1px;
   }
 
+  .entry-actions {
+    display: flex;
+    gap: 10px;
+  }
   .save-btn {
     appearance: none;
+    flex: 2;
     border: none;
     background: var(--accent);
     color: var(--accent-ink);
@@ -452,6 +457,19 @@
     letter-spacing: 0.01em;
   }
   .save-btn:active { background: var(--accent-dim); }
+  .reset-btn {
+    appearance: none;
+    flex: 1;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-dim);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    padding: 14px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .reset-btn:active { background: var(--bg-elevated-2); }
   .save-note {
     text-align: center;
     font-size: 0.8125rem;
@@ -476,19 +494,32 @@
   .history-list { display: flex; flex-direction: column; }
   .history-row {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
     gap: 10px;
     padding: 10px 0;
     border-bottom: 1px solid var(--border);
     font-size: 0.8125rem;
   }
   .history-row:last-child { border-bottom: none; }
+  .history-del {
+    appearance: none;
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    font-size: 1rem;
+    line-height: 1;
+    padding: 4px 0 4px 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .history-del:active { color: var(--warn); }
   .history-date {
     color: var(--text-dim);
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
   }
   .history-sets {
+    flex: 1;
     color: var(--text-faint);
     text-align: right;
     font-variant-numeric: tabular-nums;
@@ -534,7 +565,10 @@
         <div>
           <p class="section-label">Log today</p>
           <div class="set-table" id="setTable"></div>
-          <button class="save-btn" id="saveBtn">Save session</button>
+          <div class="entry-actions">
+            <button class="save-btn" id="saveBtn" type="button">Save session</button>
+            <button class="reset-btn" id="resetBtn" type="button">Reset</button>
+          </div>
           <div class="save-note" id="saveNote"></div>
         </div>
         <div>
@@ -834,6 +868,7 @@
   var sheetTarget = document.getElementById("sheetTarget");
   var setTable = document.getElementById("setTable");
   var saveBtn = document.getElementById("saveBtn");
+  var resetBtn = document.getElementById("resetBtn");
   var saveNote = document.getElementById("saveNote");
   var chartWrap = document.getElementById("chartWrap");
   var historyList = document.getElementById("historyList");
@@ -934,6 +969,12 @@
       setTable.appendChild(row);
     }
   }
+
+  resetBtn.addEventListener("click", function () {
+    var inputs = setTable.querySelectorAll("input");
+    inputs.forEach(function (inp) { inp.value = ""; });
+    saveNote.textContent = "";
+  });
 
   saveBtn.addEventListener("click", function () {
     var ex = EXERCISE_INDEX[state.openExId];
@@ -1126,8 +1167,24 @@
           return w + "×" + r;
         }).join("  ");
       }
+      var delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "history-del";
+      delBtn.textContent = "✕";
+      delBtn.setAttribute("aria-label", "Delete this session");
+      delBtn.addEventListener("click", function () {
+        if (!confirm("Delete the session logged on " + formatShort(s.date) + "?")) return;
+        DATA[ex.id] = (DATA[ex.id] || []).filter(function (item) { return item.date !== s.date; });
+        saveData(DATA);
+        renderChart(ex);
+        renderHistory(ex);
+        renderExerciseList();
+        if (s.date === todayISO()) buildSetTable(ex);
+      });
+
       row.appendChild(date);
       row.appendChild(sets);
+      row.appendChild(delBtn);
       historyList.appendChild(row);
     });
   }
@@ -1375,7 +1432,7 @@
   // Auto-update: always check the real deployed version (bypassing HTTP cache)
   // and force a fresh reload if this page is stale, so future fixes arrive
   // without needing to manually clear site data every time.
-  var APP_VERSION = "2026-07-20-3";
+  var APP_VERSION = "2026-07-20-4";
   fetch("version.json?t=" + Date.now(), { cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (data) {
