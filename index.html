@@ -442,6 +442,7 @@
   .entry-actions {
     display: flex;
     gap: 10px;
+    margin-top: 18px;
   }
   .save-btn {
     appearance: none;
@@ -1432,7 +1433,7 @@
   // Auto-update: always check the real deployed version (bypassing HTTP cache)
   // and force a fresh reload if this page is stale, so future fixes arrive
   // without needing to manually clear site data every time.
-  var APP_VERSION = "2026-07-20-4";
+  var APP_VERSION = "2026-07-20-5";
   fetch("version.json?t=" + Date.now(), { cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (data) {
