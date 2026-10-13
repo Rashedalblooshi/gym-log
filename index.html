@@ -164,6 +164,44 @@
     flex: 1;
     padding: 6px 18px calc(32px + env(safe-area-inset-bottom));
   }
+  .workout-progress { margin: 8px 0 14px; }
+  .workout-progress-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 7px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+  .workout-progress-heading span:first-child {
+    font-weight: 700;
+    color: var(--text);
+  }
+  .progress-track {
+    height: 5px;
+    overflow: hidden;
+    background: var(--border);
+    border-radius: 999px;
+  }
+  .progress-fill {
+    width: 0;
+    height: 100%;
+    background: var(--accent);
+    border-radius: inherit;
+    transition: width 0.2s ease;
+  }
+  .ex-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .ex-logged {
+    flex-shrink: 0;
+    color: var(--good);
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
   #exerciseList {
     display: flex;
     flex-direction: column;
@@ -358,6 +396,7 @@
   .sheet.open .sheet-inner { transform: translateY(0); }
   @media (prefers-reduced-motion: reduce) {
     .sheet-inner { transition: none; }
+    .progress-fill { transition: none; }
   }
 
   .sheet-top {
@@ -394,6 +433,36 @@
   }
 
   .sheet-body { padding: 16px 18px calc(40px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 26px; }
+
+  .detail-accordion {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-elevated);
+    overflow: hidden;
+  }
+  .detail-accordion > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px;
+    margin: 0;
+    cursor: pointer;
+    list-style: none;
+    color: var(--text-dim);
+  }
+  .detail-accordion > summary::-webkit-details-marker { display: none; }
+  .detail-accordion > summary::after {
+    content: "›";
+    color: var(--text-faint);
+    font-size: 1.25rem;
+    transform: rotate(90deg);
+  }
+  .detail-accordion[open] > summary::after { transform: rotate(-90deg); }
+  .detail-accordion > summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .accordion-content { padding: 0 10px 10px; }
 
   .section-label {
     font-size: 0.75rem;
@@ -549,6 +618,15 @@
   </header>
   <div class="day-subtitle" id="daySubtitle"></div>
   <main class="main-pad">
+    <div class="workout-progress" id="workoutProgress">
+      <div class="workout-progress-heading">
+        <span>Workout progress</span>
+        <span id="workoutProgressLabel"></span>
+      </div>
+      <div class="progress-track" id="workoutProgressTrack" role="progressbar" aria-label="Today's workout progress" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+        <div class="progress-fill" id="workoutProgressFill"></div>
+      </div>
+    </div>
     <div id="exerciseList"></div>
     <div id="coachView" style="display:none;"></div>
   </main>
@@ -572,14 +650,18 @@
           </div>
           <div class="save-note" id="saveNote"></div>
         </div>
-        <div>
-          <p class="section-label">Progress</p>
-          <div class="chart-wrap" id="chartWrap"></div>
-        </div>
-        <div>
-          <p class="section-label">History</p>
-          <div class="history-list" id="historyList"></div>
-        </div>
+        <details class="detail-accordion" id="progressDetails">
+          <summary class="section-label">Progress</summary>
+          <div class="accordion-content">
+            <div class="chart-wrap" id="chartWrap"></div>
+          </div>
+        </details>
+        <details class="detail-accordion">
+          <summary class="section-label">History</summary>
+          <div class="accordion-content">
+            <div class="history-list" id="historyList"></div>
+          </div>
+        </details>
       </div>
     </div>
   </div>
@@ -754,6 +836,7 @@
     var isLog = state.view === "log";
     dayTabsEl.style.display = isLog ? "" : "none";
     daySubtitleEl.style.display = isLog ? "" : "none";
+    document.getElementById("workoutProgress").style.display = isLog ? "" : "none";
     listEl.style.display = isLog ? "" : "none";
     coachViewEl.style.display = isLog ? "none" : "";
     if (!isLog) renderCoach();
@@ -761,6 +844,9 @@
 
   // ---------- render: exercise list ----------
   var listEl = document.getElementById("exerciseList");
+  var workoutProgressLabel = document.getElementById("workoutProgressLabel");
+  var workoutProgressTrack = document.getElementById("workoutProgressTrack");
+  var workoutProgressFill = document.getElementById("workoutProgressFill");
   function targetLabel(ex) {
     if (ex.type === "time") return ex.sets + " rounds × " + ex.reps + "s";
     return ex.sets + " × " + ex.reps;
@@ -813,20 +899,36 @@
 
   function renderExerciseList() {
     listEl.innerHTML = "";
-    ROUTINE[state.day].exercises.forEach(function (ex) {
+    var exercises = ROUTINE[state.day].exercises;
+    var loggedCount = exercises.filter(function (ex) { return todaysExistingSession(ex.id); }).length;
+    workoutProgressLabel.textContent = loggedCount + " of " + exercises.length + " logged today";
+    workoutProgressTrack.setAttribute("aria-valuemax", String(exercises.length));
+    workoutProgressTrack.setAttribute("aria-valuenow", String(loggedCount));
+    workoutProgressFill.style.width = (exercises.length ? loggedCount / exercises.length * 100 : 0) + "%";
+
+    exercises.forEach(function (ex) {
       var card = document.createElement("button");
       card.className = "ex-card";
       card.type = "button";
 
       var main = document.createElement("div");
       main.className = "ex-main";
+      var titleRow = document.createElement("div");
+      titleRow.className = "ex-title-row";
       var name = document.createElement("p");
       name.className = "ex-name";
       name.textContent = ex.name;
+      titleRow.appendChild(name);
+      if (todaysExistingSession(ex.id)) {
+        var logged = document.createElement("span");
+        logged.className = "ex-logged";
+        logged.textContent = "Logged today";
+        titleRow.appendChild(logged);
+      }
       var target = document.createElement("div");
       target.className = "ex-target";
       target.textContent = targetLabel(ex);
-      main.appendChild(name);
+      main.appendChild(titleRow);
       main.appendChild(target);
 
       var stat = document.createElement("div");
@@ -875,6 +977,12 @@
   var chartWrap = document.getElementById("chartWrap");
   var historyList = document.getElementById("historyList");
   var backBtn = document.getElementById("backBtn");
+  var progressDetails = document.getElementById("progressDetails");
+  progressDetails.addEventListener("toggle", function () {
+    if (progressDetails.open && state.openExId) {
+      renderChart(EXERCISE_INDEX[state.openExId]);
+    }
+  });
 
   function openDetail(exId) {
     state.openExId = exId;
@@ -882,7 +990,7 @@
     sheetName.textContent = ex.name;
     sheetTarget.textContent = targetLabel(ex);
     buildSetTable(ex);
-    renderChart(ex);
+    progressDetails.open = false;
     renderHistory(ex);
     saveNote.textContent = "";
     sheetEl.classList.add("open");
@@ -1010,6 +1118,7 @@
     saveNote.textContent = "Saved for " + formatShort(iso) + ".";
     renderChart(ex);
     renderHistory(ex);
+    renderExerciseList();
   });
 
   // ---------- chart ----------
