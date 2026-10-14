@@ -7,53 +7,31 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Gym Log">
-<meta name="theme-color" content="#17181b">
+<meta name="theme-color" content="#0f1724">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 <style>
   :root {
-    --bg: #17181b;
-    --bg-elevated: #1f2124;
-    --bg-elevated-2: #25272b;
-    --border: #2c2f33;
-    --text: #ededec;
-    --text-dim: #9497a0;
-    --text-faint: #6b6e76;
-    --accent: #cc8b3c;
-    --accent-ink: #1a1510;
-    --accent-dim: #8a6229;
-    --grid-line: rgba(237, 237, 236, 0.08);
-    --fill-top: rgba(204, 139, 60, 0.28);
-    --fill-bottom: rgba(204, 139, 60, 0);
-    --good: #8fb36b;
-    --warn: #c97a63;
+    --bg: #0f1724;
+    --bg-elevated: #172235;
+    --bg-elevated-2: #1d2b42;
+    --border: #2a3a52;
+    --text: #edf4ff;
+    --text-dim: #a9b8ce;
+    --text-faint: #8192ab;
+    --accent: #66a8ff;
+    --accent-ink: #081729;
+    --accent-dim: #4387df;
+    --grid-line: rgba(220, 235, 255, 0.1);
+    --fill-top: rgba(102, 168, 255, 0.26);
+    --fill-bottom: rgba(102, 168, 255, 0);
+    --good: #7fceaa;
+    --warn: #f09a87;
     --radius: 10px;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
     color-scheme: dark;
   }
-  @media (prefers-color-scheme: light) {
-    :root {
-      --bg: #e7e4dc;
-      --bg-elevated: #f3f1ea;
-      --bg-elevated-2: #ffffff;
-      --border: #d8d4c8;
-      --text: #201f1c;
-      --text-dim: #6b685f;
-      --text-faint: #8c897e;
-      --accent: #a2611f;
-      --accent-ink: #fffaf3;
-      --accent-dim: #c98a44;
-      --grid-line: rgba(32, 31, 28, 0.1);
-      --fill-top: rgba(162, 97, 31, 0.16);
-      --fill-bottom: rgba(162, 97, 31, 0);
-      --good: #4f7a3f;
-      --warn: #9c4430;
-      --shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-      color-scheme: light;
-    }
-  }
-
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
@@ -1588,7 +1566,7 @@
     var note = document.createElement("p");
     note.className = "weekly-report-note";
     note.textContent = formatShort(period.start) + "–" + formatShort(period.end) +
-      " · Compared with " + formatShort(period.previousStart) + "–" + formatShort(period.previousEnd) +
+      " · Compared with the same days last week (" + formatShort(period.previousStart) + "–" + formatShort(period.previousEnd) + ")" +
       ". Calculated on this device from your saved logs; no AI or data sharing.";
     section.appendChild(note);
 
@@ -1607,13 +1585,23 @@
       chipEl.appendChild(caption);
       summary.appendChild(chipEl);
     }
-    appendChip(current.trainingDays + " / " + previous.trainingDays, "Training days");
-    appendChip(current.exerciseCount + " / " + previous.exerciseCount, "Exercises");
-    appendChip(current.volume ? Math.round(current.volume).toLocaleString("en-US") : "—", "Volume (kg × reps)");
+    appendChip(current.trainingDays + " / " + previous.trainingDays, "Days · now / prev");
+    appendChip(current.exerciseCount + " / " + previous.exerciseCount, "Exercises · now / prev");
+    var currentVolume = current.volume ? Math.round(current.volume).toLocaleString("en-US") : "0";
+    var previousVolume = previous.volume ? Math.round(previous.volume).toLocaleString("en-US") : "0";
+    appendChip(currentVolume + " / " + previousVolume, "Volume · now / prev");
     section.appendChild(summary);
 
     var insight = document.createElement("div");
     insight.className = "weekly-insight";
+    if (!current.trainingDays) {
+      insight.textContent = previous.trainingDays
+        ? "No workouts logged in this week's period yet. In the same period last week, you trained on " + previous.trainingDays + " " + (previous.trainingDays === 1 ? "day" : "days") + " and logged " + previous.exerciseCount + " " + (previous.exerciseCount === 1 ? "exercise" : "exercises") + "."
+        : "No workouts logged in this week's period yet. Log a session to start your week-to-week comparison.";
+      section.appendChild(insight);
+      coachViewEl.appendChild(section);
+      return;
+    }
     var workoutChange = current.trainingDays - previous.trainingDays;
     var exerciseChange = current.exerciseCount - previous.exerciseCount;
     var activityText = workoutChange === 0
@@ -1864,7 +1852,7 @@
   // Auto-update: always check the real deployed version (bypassing HTTP cache)
   // and force a fresh reload if this page is stale, so future fixes arrive
   // without needing to manually clear site data every time.
-  var APP_VERSION = "2026-10-14-11";
+  var APP_VERSION = "2026-10-14-12";
   fetch("version.json?t=" + Date.now(), { cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (data) {
