@@ -282,6 +282,105 @@
     border-radius: 8px;
   }
   .weekly-exercise .coach-msg { font-size: 0.75rem; }
+  .workout-calendar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 14px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .calendar-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .calendar-title { margin: 0; font-size: 1rem; font-weight: 800; }
+  .calendar-nav { display: flex; gap: 6px; }
+  .calendar-nav-btn {
+    appearance: none;
+    width: 36px;
+    height: 36px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  .calendar-nav-btn:disabled { opacity: 0.4; cursor: default; }
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .calendar-weekday {
+    padding: 4px 0;
+    color: var(--text-faint);
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .calendar-day {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    appearance: none;
+    background: var(--bg-elevated);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+  .calendar-day:disabled { background: transparent; cursor: default; }
+  .calendar-day.has-workout::after {
+    position: absolute;
+    bottom: 4px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--good);
+    content: "";
+  }
+  .calendar-day.selected {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 800;
+  }
+  .calendar-day.selected.has-workout::after { background: currentColor; }
+  .calendar-day.today:not(.selected) { border-color: var(--accent-dim); }
+  .calendar-day:focus-visible, .calendar-nav-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .calendar-legend { color: var(--text-faint); font-size: 0.6875rem; }
+  .calendar-day-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .calendar-day-summary h3 { margin: 0; font-size: 0.8125rem; }
+  .calendar-session {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--text-dim);
+    font-size: 0.75rem;
+  }
+  .calendar-session-detail { color: var(--text-faint); text-align: right; }
 
   .backup-box {
     border-top: 1px solid var(--border);
@@ -676,6 +775,7 @@
     <div class="primary-nav" id="primaryNav">
       <button class="primary-tab active" data-view="log" type="button">Log</button>
       <button class="primary-tab" data-view="coach" type="button">Coach</button>
+      <button class="primary-tab" data-view="calendar" type="button">Calendar</button>
     </div>
     <div class="day-tabs" id="dayTabs"></div>
   </header>
@@ -692,6 +792,7 @@
     </div>
     <div id="exerciseList"></div>
     <div id="coachView" style="display:none;"></div>
+    <div id="calendarView" style="display:none;"></div>
   </main>
 
   <div class="sheet" id="sheet">
@@ -899,6 +1000,7 @@
 
   var primaryNavEl = document.getElementById("primaryNav");
   var coachViewEl = document.getElementById("coachView");
+  var calendarViewEl = document.getElementById("calendarView");
   Array.prototype.forEach.call(primaryNavEl.children, function (btn) {
     btn.addEventListener("click", function () {
       state.view = btn.dataset.view;
@@ -910,12 +1012,16 @@
   });
   function updateViewVisibility() {
     var isLog = state.view === "log";
+    var isCoach = state.view === "coach";
+    var isCalendar = state.view === "calendar";
     dayTabsEl.style.display = isLog ? "" : "none";
     daySubtitleEl.style.display = isLog ? "" : "none";
     document.getElementById("workoutProgress").style.display = isLog ? "" : "none";
     listEl.style.display = isLog ? "" : "none";
-    coachViewEl.style.display = isLog ? "none" : "";
-    if (!isLog) renderCoach();
+    coachViewEl.style.display = isCoach ? "" : "none";
+    calendarViewEl.style.display = isCalendar ? "" : "none";
+    if (isCoach) renderCoach();
+    if (isCalendar) renderWorkoutCalendar();
   }
 
   // ---------- render: exercise list ----------
@@ -1550,6 +1656,156 @@
     });
     return { trainingDays: Object.keys(dates).length, exerciseCount: exerciseCount, volume: volume };
   }
+  var calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  var calendarSelectedDate = todayISO();
+
+  function calendarSessionsByDate() {
+    var byDate = {};
+    Object.keys(EXERCISE_INDEX).forEach(function (exId) {
+      getSessions(exId).forEach(function (session) {
+        if (!byDate[session.date]) byDate[session.date] = [];
+        byDate[session.date].push({ ex: EXERCISE_INDEX[exId], session: session });
+      });
+    });
+    return byDate;
+  }
+  function renderWorkoutCalendar() {
+    calendarViewEl.innerHTML = "";
+    var byDate = calendarSessionsByDate();
+    var year = calendarMonth.getFullYear();
+    var month = calendarMonth.getMonth();
+    var firstDay = new Date(year, month, 1);
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var firstDayOffset = (firstDay.getDay() + 6) % 7;
+    var today = todayISO();
+    var latestMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    var section = document.createElement("section");
+    section.className = "workout-calendar";
+    section.setAttribute("aria-label", "Workout completion calendar");
+
+    var heading = document.createElement("div");
+    heading.className = "calendar-heading";
+    var title = document.createElement("h2");
+    title.className = "calendar-title";
+    title.textContent = calendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    heading.appendChild(title);
+    var nav = document.createElement("div");
+    nav.className = "calendar-nav";
+    var previous = document.createElement("button");
+    previous.type = "button";
+    previous.className = "calendar-nav-btn";
+    previous.textContent = "‹";
+    previous.setAttribute("aria-label", "Previous month");
+    previous.addEventListener("click", function () {
+      calendarMonth = new Date(year, month - 1, 1);
+      selectCalendarMonthDay(byDate);
+      renderWorkoutCalendar();
+    });
+    var next = document.createElement("button");
+    next.type = "button";
+    next.className = "calendar-nav-btn";
+    next.textContent = "›";
+    next.setAttribute("aria-label", "Next month");
+    next.disabled = year === latestMonth.getFullYear() && month >= latestMonth.getMonth();
+    next.addEventListener("click", function () {
+      if (next.disabled) return;
+      calendarMonth = new Date(year, month + 1, 1);
+      selectCalendarMonthDay(byDate);
+      renderWorkoutCalendar();
+    });
+    nav.appendChild(previous);
+    nav.appendChild(next);
+    heading.appendChild(nav);
+    section.appendChild(heading);
+
+    var grid = document.createElement("div");
+    grid.className = "calendar-grid";
+    grid.setAttribute("role", "grid");
+    ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].forEach(function (day) {
+      var weekday = document.createElement("div");
+      weekday.className = "calendar-weekday";
+      weekday.setAttribute("role", "columnheader");
+      weekday.textContent = day;
+      grid.appendChild(weekday);
+    });
+
+    for (var blank = 0; blank < firstDayOffset; blank++) {
+      var emptyCell = document.createElement("span");
+      emptyCell.setAttribute("role", "presentation");
+      grid.appendChild(emptyCell);
+    }
+    for (var dayNumber = 1; dayNumber <= daysInMonth; dayNumber++) {
+      var dateISO = year + "-" + String(month + 1).padStart(2, "0") + "-" + String(dayNumber).padStart(2, "0");
+      var dateButton = document.createElement("button");
+      dateButton.type = "button";
+      dateButton.className = "calendar-day";
+      dateButton.textContent = String(dayNumber);
+      dateButton.setAttribute("role", "gridcell");
+      var sessionsForDay = byDate[dateISO] || [];
+      var dayIsFuture = dateISO > today;
+      dateButton.disabled = dayIsFuture;
+      dateButton.setAttribute("aria-label", formatShort(dateISO) + (sessionsForDay.length ? ", " + sessionsForDay.length + (sessionsForDay.length === 1 ? " exercise logged" : " exercises logged") : ", no workout logged"));
+      if (sessionsForDay.length) dateButton.classList.add("has-workout");
+      if (dateISO === today) dateButton.classList.add("today");
+      if (dateISO === calendarSelectedDate) {
+        dateButton.classList.add("selected");
+        dateButton.setAttribute("aria-selected", "true");
+      }
+      dateButton.addEventListener("click", function (selectedISO) {
+        return function () {
+          calendarSelectedDate = selectedISO;
+          renderWorkoutCalendar();
+        };
+      }(dateISO));
+      grid.appendChild(dateButton);
+    }
+    section.appendChild(grid);
+
+    var legend = document.createElement("div");
+    legend.className = "calendar-legend";
+    legend.textContent = "● Workout logged";
+    section.appendChild(legend);
+
+    var selectedHeading = document.createElement("h3");
+    selectedHeading.textContent = formatShort(calendarSelectedDate);
+    var selectedSessions = byDate[calendarSelectedDate] || [];
+    var daySummary = document.createElement("div");
+    daySummary.className = "calendar-day-summary";
+    daySummary.appendChild(selectedHeading);
+    if (selectedSessions.length) {
+      selectedSessions.forEach(function (item) {
+        var row = document.createElement("div");
+        row.className = "calendar-session";
+        var name = document.createElement("span");
+        name.textContent = item.ex.name;
+        var detail = document.createElement("span");
+        detail.className = "calendar-session-detail";
+        var best = bestMetric(item.session, item.ex.type);
+        var unit = item.ex.type === "time" ? "s" : " kg";
+        detail.textContent = best > 0 ? "Best " + best + unit : item.session.sets.length + " sets";
+        row.appendChild(name);
+        row.appendChild(detail);
+        daySummary.appendChild(row);
+      });
+    } else {
+      var noSession = document.createElement("div");
+      noSession.className = "calendar-legend";
+      noSession.textContent = "No workouts logged on this day.";
+      daySummary.appendChild(noSession);
+    }
+    section.appendChild(daySummary);
+    calendarViewEl.appendChild(section);
+  }
+  function selectCalendarMonthDay(byDate) {
+    var yearMonth = calendarMonth.getFullYear() + "-" + String(calendarMonth.getMonth() + 1).padStart(2, "0");
+    var dates = Object.keys(byDate).filter(function (date) {
+      return date.slice(0, 7) === yearMonth && date <= todayISO();
+    }).sort();
+    calendarSelectedDate = dates.length
+      ? dates[dates.length - 1]
+      : yearMonth + "-01";
+  }
+
   function renderWeeklyReport() {
     var period = getWeeklyPeriod();
     var current = summarizeWeek(period.start, period.end);
@@ -1852,7 +2108,7 @@
   // Auto-update: always check the real deployed version (bypassing HTTP cache)
   // and force a fresh reload if this page is stale, so future fixes arrive
   // without needing to manually clear site data every time.
-  var APP_VERSION = "2026-10-14-12";
+  var APP_VERSION = "2026-10-14-15";
   fetch("version.json?t=" + Date.now(), { cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (data) {
