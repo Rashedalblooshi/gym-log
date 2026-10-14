@@ -279,6 +279,31 @@
     font-size: 0.875rem;
     padding: 40px 12px;
   }
+  .weekly-report {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 14px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .weekly-report-title { margin: 0; font-size: 1rem; font-weight: 800; }
+  .weekly-report-note { margin: 0; color: var(--text-faint); font-size: 0.75rem; line-height: 1.4; }
+  .weekly-report-summary { display: flex; gap: 8px; }
+  .weekly-report-summary .summary-chip { min-width: 0; }
+  .weekly-report-summary .summary-chip .num { font-size: 1.125rem; }
+  .weekly-insight { font-size: 0.8125rem; line-height: 1.45; color: var(--text-dim); }
+  .weekly-exercises { display: flex; flex-direction: column; gap: 8px; }
+  .weekly-exercise {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .weekly-exercise .coach-msg { font-size: 0.75rem; }
 
   .backup-box {
     border-top: 1px solid var(--border);
@@ -1508,8 +1533,158 @@
     return "";
   }
 
+  function shiftISODate(iso, days) {
+    var date = new Date(iso + "T00:00:00");
+    date.setDate(date.getDate() + days);
+    return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+  }
+  function getWeeklyPeriod() {
+    var end = todayISO();
+    var dayOffset = (new Date().getDay() + 6) % 7;
+    var start = shiftISODate(end, -dayOffset);
+    return {
+      start: start,
+      end: end,
+      previousStart: shiftISODate(start, -7),
+      previousEnd: shiftISODate(end, -7)
+    };
+  }
+  function weeklySessions(exerciseId, start, end) {
+    return getSessions(exerciseId).filter(function (session) {
+      return session.date >= start && session.date <= end && bestMetric(session, EXERCISE_INDEX[exerciseId].type) > 0;
+    });
+  }
+  function summarizeWeek(start, end) {
+    var dates = {};
+    var exerciseCount = 0;
+    var volume = 0;
+    Object.keys(EXERCISE_INDEX).forEach(function (exId) {
+      var ex = EXERCISE_INDEX[exId];
+      weeklySessions(exId, start, end).forEach(function (session) {
+        dates[session.date] = true;
+        exerciseCount++;
+        if (ex.type !== "time") {
+          session.sets.forEach(function (set) {
+            if (set.weight > 0 && set.reps > 0) volume += set.weight * set.reps;
+          });
+        }
+      });
+    });
+    return { trainingDays: Object.keys(dates).length, exerciseCount: exerciseCount, volume: volume };
+  }
+  function renderWeeklyReport() {
+    var period = getWeeklyPeriod();
+    var current = summarizeWeek(period.start, period.end);
+    var previous = summarizeWeek(period.previousStart, period.previousEnd);
+    var todayIsFriday = new Date().getDay() === 5;
+    var section = document.createElement("section");
+    section.className = "weekly-report";
+
+    var heading = document.createElement("h2");
+    heading.className = "weekly-report-title";
+    heading.textContent = todayIsFriday ? "Friday weekly overview" : "This week's progress";
+    section.appendChild(heading);
+
+    var note = document.createElement("p");
+    note.className = "weekly-report-note";
+    note.textContent = formatShort(period.start) + "–" + formatShort(period.end) +
+      " · Compared with " + formatShort(period.previousStart) + "–" + formatShort(period.previousEnd) +
+      ". Calculated on this device from your saved logs; no AI or data sharing.";
+    section.appendChild(note);
+
+    var summary = document.createElement("div");
+    summary.className = "weekly-report-summary";
+    function appendChip(value, label) {
+      var chipEl = document.createElement("div");
+      chipEl.className = "summary-chip";
+      var number = document.createElement("span");
+      number.className = "num";
+      number.textContent = value;
+      var caption = document.createElement("span");
+      caption.className = "lbl";
+      caption.textContent = label;
+      chipEl.appendChild(number);
+      chipEl.appendChild(caption);
+      summary.appendChild(chipEl);
+    }
+    appendChip(current.trainingDays + " / " + previous.trainingDays, "Training days");
+    appendChip(current.exerciseCount + " / " + previous.exerciseCount, "Exercises");
+    appendChip(current.volume ? Math.round(current.volume).toLocaleString("en-US") : "—", "Volume (kg × reps)");
+    section.appendChild(summary);
+
+    var insight = document.createElement("div");
+    insight.className = "weekly-insight";
+    var workoutChange = current.trainingDays - previous.trainingDays;
+    var exerciseChange = current.exerciseCount - previous.exerciseCount;
+    var activityText = workoutChange === 0
+      ? "You trained on the same number of days as the comparison week"
+      : "You trained on " + Math.abs(workoutChange) + " " + (Math.abs(workoutChange) === 1 ? "day" : "days") + (workoutChange > 0 ? " more" : " fewer") + " than the comparison week";
+    activityText += exerciseChange === 0
+      ? " and logged the same number of exercises."
+      : " and logged " + Math.abs(exerciseChange) + " " + (Math.abs(exerciseChange) === 1 ? "exercise" : "exercises") + (exerciseChange > 0 ? " more." : " fewer.");
+    if (current.volume > 0 || previous.volume > 0) {
+      var volumeChange = current.volume - previous.volume;
+      activityText += " Logged weight-volume is " + (volumeChange === 0 ? "unchanged" : Math.round(Math.abs(volumeChange)).toLocaleString("en-US") + " kg × reps " + (volumeChange > 0 ? "higher" : "lower")) + " than the comparison week.";
+    } else {
+      activityText += " No complete weighted sets were logged in these periods, so volume could not be compared.";
+    }
+    insight.textContent = activityText;
+    section.appendChild(insight);
+
+    var exerciseCards = document.createElement("div");
+    exerciseCards.className = "weekly-exercises";
+    var comparedCount = 0;
+    Object.keys(EXERCISE_INDEX).forEach(function (exId) {
+      var ex = EXERCISE_INDEX[exId];
+      var thisWeek = weeklySessions(exId, period.start, period.end);
+      if (!thisWeek.length) return;
+      var lastWeek = weeklySessions(exId, period.previousStart, period.previousEnd);
+      var currentBest = Math.max.apply(null, thisWeek.map(function (session) { return bestMetric(session, ex.type); }));
+      var previousBest = lastWeek.length ? Math.max.apply(null, lastWeek.map(function (session) { return bestMetric(session, ex.type); })) : null;
+      var status = previousBest === null ? "first" : (currentBest > previousBest ? "up" : (currentBest < previousBest ? "down" : "same"));
+      var unit = ex.type === "time" ? "s" : " kg";
+      var difference = previousBest === null ? null : currentBest - previousBest;
+
+      var card = document.createElement("div");
+      card.className = "weekly-exercise";
+      var top = document.createElement("div");
+      top.className = "coach-card-top";
+      var name = document.createElement("span");
+      name.className = "coach-ex-name";
+      name.textContent = ex.name;
+      var pill = document.createElement("span");
+      pill.className = "pill " + status;
+      pill.textContent = { up: "Up", down: "Down", same: "Steady", first: "No comparison" }[status];
+      top.appendChild(name);
+      top.appendChild(pill);
+      card.appendChild(top);
+
+      var message = document.createElement("div");
+      message.className = "coach-msg";
+      if (previousBest === null) {
+        message.textContent = "Best this week: " + currentBest + unit + ". No session for comparison last week.";
+      } else {
+        var changeText = difference === 0 ? "unchanged" : Math.abs(difference) + unit + (difference > 0 ? " higher" : " lower");
+        message.textContent = "Best this week: " + currentBest + unit + " vs " + previousBest + unit + " last week (" + changeText + ").";
+      }
+      card.appendChild(message);
+      exerciseCards.appendChild(card);
+      comparedCount++;
+    });
+    if (comparedCount) {
+      section.appendChild(exerciseCards);
+    } else {
+      var empty = document.createElement("p");
+      empty.className = "weekly-report-note";
+      empty.textContent = "No workouts logged this week yet. Your overview will appear here after you log a session.";
+      section.appendChild(empty);
+    }
+    coachViewEl.appendChild(section);
+  }
+
   function renderCoach() {
     coachViewEl.innerHTML = "";
+    renderWeeklyReport();
     var recap = computeDayRecap();
 
     if (recap && recap.entries.length) {
@@ -1689,7 +1864,7 @@
   // Auto-update: always check the real deployed version (bypassing HTTP cache)
   // and force a fresh reload if this page is stale, so future fixes arrive
   // without needing to manually clear site data every time.
-  var APP_VERSION = "2026-10-14-10";
+  var APP_VERSION = "2026-10-14-11";
   fetch("version.json?t=" + Date.now(), { cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (data) {
