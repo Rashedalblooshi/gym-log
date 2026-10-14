@@ -508,6 +508,66 @@
     outline-offset: 1px;
   }
 
+  .rest-timer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .rest-timer-info {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+  }
+  .rest-timer-label {
+    color: var(--text-faint);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .rest-timer-display {
+    color: var(--text);
+    font-size: 1.375rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .rest-timer-status {
+    min-height: 1em;
+    color: var(--text-faint);
+    font-size: 0.6875rem;
+  }
+  .rest-timer-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .rest-timer-btn {
+    appearance: none;
+    min-height: 38px;
+    padding: 7px 8px;
+    background: var(--bg-elevated-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .rest-timer-btn:disabled { opacity: 0.45; cursor: default; }
+  .rest-timer-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+  }
+
   .entry-actions {
     display: flex;
     gap: 10px;
@@ -644,6 +704,19 @@
         <div>
           <p class="section-label">Log today</p>
           <div class="set-table" id="setTable"></div>
+          <div class="rest-timer">
+            <div class="rest-timer-info">
+              <span class="rest-timer-label">Rest timer</span>
+              <span class="rest-timer-display" id="restTimerDisplay" role="timer" aria-live="off">0:40</span>
+            </div>
+            <div class="rest-timer-status" id="restTimerStatus" aria-live="polite">Choose your rest</div>
+            <div class="rest-timer-controls">
+              <button class="rest-timer-btn primary" id="restTimerSet" type="button">Between sets · 0:40</button>
+              <button class="rest-timer-btn primary" id="restTimerExercise" type="button">Between exercises · 2:00</button>
+              <button class="rest-timer-btn" id="restTimerToggle" type="button" disabled>Pause</button>
+              <button class="rest-timer-btn" id="restTimerReset" type="button" aria-label="Reset rest timer">↺ Reset</button>
+            </div>
+          </div>
           <div class="entry-actions">
             <button class="save-btn" id="saveBtn" type="button">Save session</button>
             <button class="reset-btn" id="resetBtn" type="button">Reset</button>
@@ -977,6 +1050,17 @@
   var chartWrap = document.getElementById("chartWrap");
   var historyList = document.getElementById("historyList");
   var backBtn = document.getElementById("backBtn");
+  var restTimerDisplay = document.getElementById("restTimerDisplay");
+  var restTimerStatus = document.getElementById("restTimerStatus");
+  var restTimerToggle = document.getElementById("restTimerToggle");
+  var restTimerSet = document.getElementById("restTimerSet");
+  var restTimerExercise = document.getElementById("restTimerExercise");
+  var restTimerReset = document.getElementById("restTimerReset");
+  var restDuration = 40;
+  var restRemaining = restDuration;
+  var restEndsAt = null;
+  var restInterval = null;
+  var restLabel = "Between sets";
   var progressDetails = document.getElementById("progressDetails");
   progressDetails.addEventListener("toggle", function () {
     if (progressDetails.open && state.openExId) {
@@ -990,6 +1074,7 @@
     sheetName.textContent = ex.name;
     sheetTarget.textContent = targetLabel(ex);
     buildSetTable(ex);
+    resetRestTimer();
     progressDetails.open = false;
     renderHistory(ex);
     saveNote.textContent = "";
@@ -1000,9 +1085,70 @@
     sheetEl.classList.remove("open");
     document.body.style.overflow = "";
     state.openExId = null;
+    stopRestTimer();
+    resetRestTimer();
     renderExerciseList();
   }
   backBtn.addEventListener("click", closeDetail);
+
+  function formatRestTime(seconds) {
+    var minutes = Math.floor(seconds / 60);
+    var remainder = String(seconds % 60).padStart(2, "0");
+    return minutes + ":" + remainder;
+  }
+  function renderRestTimer(status) {
+    restTimerDisplay.textContent = formatRestTime(restRemaining);
+    restTimerToggle.textContent = restInterval ? "Pause" : (restRemaining > 0 && restRemaining < restDuration ? "Resume" : "Pause");
+    restTimerToggle.disabled = !restInterval && (restRemaining === restDuration || restRemaining === 0);
+    restTimerStatus.textContent = status || (restInterval ? restLabel : "Choose your rest");
+  }
+  function stopRestTimer() {
+    if (restInterval) window.clearInterval(restInterval);
+    restInterval = null;
+    restEndsAt = null;
+  }
+  function resetRestTimer() {
+    stopRestTimer();
+    restRemaining = restDuration;
+    renderRestTimer("Choose your rest");
+  }
+  function updateRestTimer() {
+    restRemaining = Math.max(0, Math.ceil((restEndsAt - Date.now()) / 1000));
+    if (restRemaining === 0) {
+      stopRestTimer();
+      renderRestTimer("Rest complete");
+      return;
+    }
+    renderRestTimer();
+  }
+  function startRestTimer(duration, label) {
+    stopRestTimer();
+    restDuration = duration;
+    restRemaining = duration;
+    restLabel = label;
+    restEndsAt = Date.now() + restRemaining * 1000;
+    restInterval = window.setInterval(updateRestTimer, 250);
+    renderRestTimer(label);
+  }
+  restTimerSet.addEventListener("click", function () {
+    startRestTimer(40, "Between sets");
+  });
+  restTimerExercise.addEventListener("click", function () {
+    startRestTimer(120, "Between exercises");
+  });
+  restTimerToggle.addEventListener("click", function () {
+    if (restInterval) {
+      updateRestTimer();
+      if (!restInterval) return;
+      stopRestTimer();
+      renderRestTimer("Paused");
+      return;
+    }
+    restEndsAt = Date.now() + restRemaining * 1000;
+    restInterval = window.setInterval(updateRestTimer, 250);
+    renderRestTimer(restLabel);
+  });
+  restTimerReset.addEventListener("click", resetRestTimer);
 
   function todaysExistingSession(exId) {
     var iso = todayISO();
@@ -1543,7 +1689,7 @@
   // Auto-update: always check the real deployed version (bypassing HTTP cache)
   // and force a fresh reload if this page is stale, so future fixes arrive
   // without needing to manually clear site data every time.
-  var APP_VERSION = "2026-10-13-8";
+  var APP_VERSION = "2026-10-14-10";
   fetch("version.json?t=" + Date.now(), { cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (data) {
