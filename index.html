@@ -576,6 +576,11 @@
   }
 
   .set-table { display: flex; flex-direction: column; gap: 8px; }
+  .set-completion {
+    color: var(--text-faint);
+    font-size: 0.75rem;
+    min-height: 1em;
+  }
   .set-head, .set-row {
     display: grid;
     grid-template-columns: 44px 1fr 1fr;
@@ -594,8 +599,20 @@
     font-weight: 700;
     color: var(--text-dim);
     font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: center;
+    gap: 7px;
   }
-  .set-row input {
+  .set-complete {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--good);
+    flex: 0 0 auto;
+    cursor: pointer;
+  }
+  .set-row.completed .set-num { color: var(--good); }
+  .set-row input:not([type="checkbox"]) {
     width: 100%;
     background: var(--bg-elevated);
     border: 1px solid var(--border);
@@ -605,7 +622,7 @@
     color: var(--text);
     font-variant-numeric: tabular-nums;
   }
-  .set-row input:focus {
+  .set-row input:not([type="checkbox"]):focus {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
@@ -1153,6 +1170,7 @@
   var sheetName = document.getElementById("sheetName");
   var sheetTarget = document.getElementById("sheetTarget");
   var setTable = document.getElementById("setTable");
+  var setCompletion = document.getElementById("setCompletion");
   var saveBtn = document.getElementById("saveBtn");
   var resetBtn = document.getElementById("resetBtn");
   var saveNote = document.getElementById("saveNote");
@@ -1276,6 +1294,12 @@
     setTable.innerHTML = "";
     var existing = todaysExistingSession(ex.id);
     var prior = mostRecentSession(ex.id);
+    var completion = document.createElement("div");
+    completion.className = "set-completion";
+    completion.id = "setCompletion";
+    completion.setAttribute("aria-live", "polite");
+    setTable.appendChild(completion);
+    setCompletion = completion;
 
     if (ex.type === "time") {
       var head = document.createElement("div");
@@ -1292,13 +1316,26 @@
     for (var i = 0; i < ex.sets; i++) {
       var row = document.createElement("div");
       row.className = "set-row" + (ex.type === "time" ? " time-row" : "");
-      var num = document.createElement("span");
-      num.className = "set-num";
-      num.textContent = i + 1;
-      row.appendChild(num);
-
       var existingSet = existing && existing.sets[i] ? existing.sets[i] : null;
       var priorSet = prior && prior.sets[i] ? prior.sets[i] : null;
+      var num = document.createElement("span");
+      num.className = "set-num";
+      var complete = document.createElement("input");
+      complete.type = "checkbox";
+      complete.className = "set-complete";
+      complete.setAttribute("aria-label", "Set " + (i + 1) + " complete");
+      complete.checked = !!(existingSet && existingSet.completed);
+      var number = document.createElement("span");
+      number.textContent = i + 1;
+      num.appendChild(complete);
+      num.appendChild(number);
+      row.appendChild(num);
+      if (complete.checked) row.classList.add("completed");
+      complete.addEventListener("change", function (event) {
+        var checkbox = event.currentTarget;
+        checkbox.closest(".set-row").classList.toggle("completed", checkbox.checked);
+        updateSetCompletion();
+      });
 
       if (ex.type === "time") {
         var secInput = document.createElement("input");
@@ -1333,11 +1370,25 @@
       }
       setTable.appendChild(row);
     }
+    updateSetCompletion();
+  }
+
+  function updateSetCompletion() {
+    if (!setCompletion) return;
+    var checkboxes = setTable.querySelectorAll(".set-complete");
+    var completed = setTable.querySelectorAll(".set-complete:checked").length;
+    setCompletion.textContent = completed + " of " + checkboxes.length + " sets complete";
   }
 
   resetBtn.addEventListener("click", function () {
-    var inputs = setTable.querySelectorAll("input");
+    var inputs = setTable.querySelectorAll('input:not([type="checkbox"])');
     inputs.forEach(function (inp) { inp.value = ""; });
+    var checkboxes = setTable.querySelectorAll(".set-complete");
+    checkboxes.forEach(function (checkbox) {
+      checkbox.checked = false;
+      checkbox.closest(".set-row").classList.remove("completed");
+    });
+    updateSetCompletion();
     saveNote.textContent = "";
   });
 
@@ -1349,13 +1400,13 @@
       if (ex.type === "time") {
         var repsInput = row.querySelector('[data-role="reps"]');
         var repsVal = repsInput.value === "" ? null : Number(repsInput.value);
-        sets.push({ weight: null, reps: repsVal });
+        sets.push({ weight: null, reps: repsVal, completed: row.querySelector(".set-complete").checked });
       } else {
         var wInput = row.querySelector('[data-role="weight"]');
         var rInput = row.querySelector('[data-role="reps"]');
         var wVal = wInput.value === "" ? null : Number(wInput.value);
         var rVal = rInput.value === "" ? null : Number(rInput.value);
-        sets.push({ weight: wVal, reps: rVal });
+        sets.push({ weight: wVal, reps: rVal, completed: row.querySelector(".set-complete").checked });
       }
     });
 
@@ -2108,7 +2159,7 @@
   // Auto-update: always check the real deployed version (bypassing HTTP cache)
   // and force a fresh reload if this page is stale, so future fixes arrive
   // without needing to manually clear site data every time.
-  var APP_VERSION = "2026-10-14-16";
+  var APP_VERSION = "2026-10-14-17";
   fetch("version.json?t=" + Date.now(), { cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (data) {
